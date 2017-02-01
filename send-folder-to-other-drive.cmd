@@ -1,4 +1,4 @@
-@net file 1>nul 2>nul && (python -x "%~f0" "%*" & pause && goto :eof) || powershell -ex unrestricted -Command "Start-Process -Verb RunAs -FilePath '%comspec%' -ArgumentList '/c ""%~fnx0"""" %*'" && goto :eof
+@net file 1>nul 2>nul && (python -x "%~f0" "%~s1" & pause && goto :eof) || powershell -ex unrestricted -Command "Start-Process -Verb RunAs -FilePath '%comspec%' -ArgumentList '/c ""%~fnx0"""" %~s1'" && goto :eof
 
 # The above line elevates the script to admin rights and reruns itself 
 # as a python script, ignoring the first line (-x argument).
@@ -7,7 +7,8 @@
 import sys
 import subprocess
 import shutil
-from pathlib import Path
+from pathlib import WindowsPath
+import win32api
 
 PRIMARY_DRIVE = 'C:'
 SECONDARY_DRIVE = 'D:'
@@ -17,6 +18,7 @@ def move_and_link(path):
 	# Sanity checks
 	if not (path.exists() and path.is_dir() and path.is_absolute()):
 		print("Invalid argument. Expected an absolute path to a directory.")
+		print("Instead got [{}]".format(str(path)))
 		sys.exit(1)
 
 	target_drive = ''
@@ -29,7 +31,7 @@ def move_and_link(path):
 		sys.exit(1)
 
 	# Target path is on other drive
-	target_path = Path(str(path).replace(path.drive, target_drive))
+	target_path = WindowsPath(str(path).replace(path.drive, target_drive))
 
 	# Check if path is a junction (and if so move the other way)
 	command = 'dir "{}" | find "JUNCTION" | find "{}"'.format(path.parent, target_path)
@@ -70,7 +72,7 @@ def move_and_link(path):
 
 
 if __name__ == "__main__":
-	path = Path(sys.argv[1])
+	path = WindowsPath(win32api.GetLongPathName(sys.argv[1]))
 	move_and_link(path)
 	print()
 	print("DONE! No errors occurred.")
